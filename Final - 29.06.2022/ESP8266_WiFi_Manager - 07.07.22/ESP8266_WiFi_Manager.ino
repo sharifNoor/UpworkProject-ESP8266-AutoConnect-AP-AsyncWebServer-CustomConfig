@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <ESP8266WiFi.h>
+//#include <WiFiManager.h> // https://github.com/tzapu/WiFiManager
 #include <ESPAsyncWebServer.h>
 #include <ESPAsyncTCP.h>
 #include "LittleFS.h"
@@ -12,7 +13,22 @@ const char* WifiSSID = "pnlWifi-ssid";
 const char* WifiPass = "pnlWifi-password";
 //const char* PARAM_INPUT_3 = "ip";
 //const char* PARAM_INPUT_4 = "gateway";
-const char* PARAM_INPUT_5 = "pnlWifi-data";
+//const char* PARAM_INPUT_5 = "pnlWifi-data";
+const char* LoRa = "lora";
+const char* Valve_Position = "pnlAdvance-valvePosition";
+const char* Communication_Failure = "pnlAdvanced-communicationfail";
+const char* Pre_alarm_delay = "pnlAdvanced-prealarmdelay";
+const char* Exit_delay = "pnlAdvanced-exitdelay";
+const char* Infrared_delay = "pnlAdvanced-infrareddelay";
+const char* Low_Temp_Control = "off";
+const char* Maximum_flow_time = "pnlAdvanced-maxflowtime";
+const char* Flow_Alarm = "flowAlarm";
+const char* Flow_Type = "pnlAdvance-flowtype";
+const char* Flow_Meter = "pnlAdvance-flowmeter";
+const char* LoRa_Channel = "pnlLoRa-channel";
+const char* LoRa_ID = "pnlLoRa-ID";
+const char* LoRa_Power = "pnlLoRa-power";
+const char* zone_ZoneNo = "zone_ZoneNo";
 
 //Variables to save values from HTML form
 String ssid;
@@ -46,6 +62,16 @@ const int ledPin = 2;
 String ledState;
 
 boolean restart = false;
+
+// Wifi Scanning...
+void prinScanResult(int networksFound)
+{
+  Serial.printf("%d network(s) found\n", networksFound);
+  for (int i = 0; i < networksFound; i++)
+  {
+    Serial.printf("%d: %s, Ch:%d (%ddBm) %s\n", i + 1, WiFi.SSID(i).c_str(), WiFi.channel(i), WiFi.RSSI(i), WiFi.encryptionType(i) == ENC_TYPE_NONE ? "open" : "");
+  }
+}
 
 // Initialize LittleFS
 void initFS() {
@@ -102,6 +128,11 @@ bool initWiFi() {
 //  }
 
   WiFi.mode(WIFI_STA);
+
+  WiFi.disconnect();
+  delay(100);
+
+  WiFi.scanNetworksAsync(prinScanResult);
 //  localIP.fromString(ip.c_str());
 //  localGateway.fromString(gateway.c_str());
 
@@ -109,17 +140,42 @@ bool initWiFi() {
 //    Serial.println("STA Failed to configure");
 //    return false;
 //  }
-  WiFi.begin(ssid.c_str(), pass.c_str());
+//  WiFi.begin(ssid.c_str(), pass.c_str());
 
-  Serial.println("Connecting to WiFi...");
-  delay(20000);
-  if(WiFi.status() != WL_CONNECTED) {
-    Serial.println("Failed to connect.");
-    return false;
-  }
+//    WiFiManager wm;
 
-  Serial.println(WiFi.localIP());
-  return true;
+    // reset settings - wipe stored credentials for testing
+    // these are stored by the esp library
+//    wm.resetSettings();
+
+    // Automatically connect using saved credentials,
+    // if connection fails, it starts an access point with the specified name ( "AutoConnectAP"),
+    // if empty will auto generate SSID, if password is blank it will be anonymous AP (wm.autoConnect())
+    // then goes into a blocking loop awaiting configuration and will return success result
+
+//    bool res;
+//    // res = wm.autoConnect(); // auto generated AP name from chipid
+//    // res = wm.autoConnect("AutoConnectAP"); // anonymous ap
+//    res = wm.autoConnect("AutoConnectAP","password"); // password protected ap
+//
+//    if(!res) {
+//        Serial.println("Failed to connect");
+//        // ESP.restart();
+//    } 
+//    else {
+//        //if you get here you have connected to the WiFi    
+//        Serial.println("connected...yeey :)");
+//    }
+//
+//  Serial.println("Connecting to WiFi...");
+//  delay(20000);
+//  if(WiFi.status() != WL_CONNECTED) {
+//    Serial.println("Failed to connect.");
+//    return false;
+//  }
+
+//  Serial.println(WiFi.localIP());
+//  return true;
 }
 
 // Replaces placeholder with LED state value
@@ -135,6 +191,18 @@ String processor(const String& var) {
   }
   return String();
 }
+
+                                                                                                                      //// Replaces placeholder with DHT values
+                                                                                                                      //String processor1(const String& var){
+                                                                                                                      //  //Serial.println(var);
+                                                                                                                      //  if(var == "TEMPERATURE"){
+                                                                                                                      //    return String(t);
+                                                                                                                      //  }
+                                                                                                                      //  else if(var == "HUMIDITY"){
+                                                                                                                      //    return String(h);
+                                                                                                                      //  }
+                                                                                                                      //  return String();
+                                                                                                                      //}
 
 void setup() {
   // Serial port for debugging purposes
@@ -164,17 +232,21 @@ void setup() {
     server.serveStatic("/", LittleFS, "/");
     
     // Route to set GPIO state to HIGH
-    server.on("/on", HTTP_GET, [](AsyncWebServerRequest *request) {
-      digitalWrite(ledPin, LOW);
-      request->send(LittleFS, "/index.html", "text/html", false, processor);
-    });
+//    server.on("/on", HTTP_GET, [](AsyncWebServerRequest *request) {
+//      digitalWrite(ledPin, LOW);
+//      request->send(LittleFS, "/index.html", "text/html", false, processor);
+//    });
+
+                                                                                                    //    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
+                                                                                                    //      request->send_P(200, "text/html", index_html, processor1);
+                                                                                                    //    });
 
     // Route to set GPIO state to LOW
-    server.on("/off", HTTP_GET, [](AsyncWebServerRequest *request) {
-      digitalWrite(ledPin, HIGH);
-      request->send(LittleFS, "/index.html", "text/html", false, processor);
-    });
-    server.begin();
+//    server.on("/off", HTTP_GET, [](AsyncWebServerRequest *request) {
+//      digitalWrite(ledPin, HIGH);
+//      request->send(LittleFS, "/index.html", "text/html", false, processor);
+//    });
+//    server.begin();
   }
   else {
     // Connect to Wi-Fi network with SSID and password
@@ -200,11 +272,11 @@ void setup() {
         if(p->isPost()){
           // HTTP POST ssid value
           String dataaa = p->value().c_str();
-          Serial.println("---->" + dataaa);
+          String naaam = p->name().c_str();
+          Serial.println("=================================================================> " + naaam + ":::" + dataaa);
           if (p->name() == WifiSSID) {
             ssid = p->value().c_str();
             Serial.print("SSID set to: ");
-            Serial.println(ssid);
             // Write file to save value
             writeFile(LittleFS, ssidPath, ssid.c_str());
           }
