@@ -1,10 +1,12 @@
 #include <Arduino.h>
+//#include <DNSServer.h>
 #include <ESP8266WiFi.h>
 //#include <WiFiManager.h> // https://github.com/tzapu/WiFiManager
 #include <ESPAsyncWebServer.h>
 #include <ESPAsyncTCP.h>
 #include "LittleFS.h"
 
+//DNSServer dnsServer;
 // Create AsyncWebServer object on port 80
 AsyncWebServer server(80);
 
@@ -30,12 +32,14 @@ const char* LoRa_ID = "pnlLoRa-ID";
 const char* LoRa_Power = "pnlLoRa-power";
 const char* zone_ZoneNo = "zone_ZoneNo";
 
+
 //Variables to save values from HTML form
 String ssid;
 String pass;
 //String ip;
 //String gateway;
 String data[10];
+String TestAP;
 
 // File paths to save input values permanently
 const char* ssidPath = "/ssid.txt";
@@ -71,6 +75,7 @@ void prinScanResult(int networksFound)
   {
     Serial.printf("%d: %s, Ch:%d (%ddBm) %s\n", i + 1, WiFi.SSID(i).c_str(), WiFi.channel(i), WiFi.RSSI(i), WiFi.encryptionType(i) == ENC_TYPE_NONE ? "open" : "");
   }
+  TestAP = WiFi.SSID(0).c_str();
 }
 
 // Initialize LittleFS
@@ -180,16 +185,10 @@ bool initWiFi() {
 
 // Replaces placeholder with LED state value
 String processor(const String& var) {
-  if(var == "STATE") {
-    if(!digitalRead(ledPin)) {
-      ledState = "ON";
-    }
-    else {
-      ledState = "OFF";
-    }
-    return ledState;
+  if(var == "TestAP") {
+    return String(WiFi.SSID(0).c_str());
   }
-  return String();
+//  return String();
 }
 
                                                                                                                       //// Replaces placeholder with DHT values
@@ -231,36 +230,25 @@ void setup() {
     
     server.serveStatic("/", LittleFS, "/");
     
-    // Route to set GPIO state to HIGH
-//    server.on("/on", HTTP_GET, [](AsyncWebServerRequest *request) {
-//      digitalWrite(ledPin, LOW);
-//      request->send(LittleFS, "/index.html", "text/html", false, processor);
-//    });
-
                                                                                                     //    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
                                                                                                     //      request->send_P(200, "text/html", index_html, processor1);
                                                                                                     //    });
-
-    // Route to set GPIO state to LOW
-//    server.on("/off", HTTP_GET, [](AsyncWebServerRequest *request) {
-//      digitalWrite(ledPin, HIGH);
-//      request->send(LittleFS, "/index.html", "text/html", false, processor);
-//    });
-//    server.begin();
   }
   else {
     // Connect to Wi-Fi network with SSID and password
     Serial.println("Setting AP (Access Point)");
     // NULL sets an open Access Point
-    WiFi.softAP("ESP-WIFI-MANAGER", NULL);
+    WiFi.softAP("ESP-WIFI-MANAGER");
+//    dnsServer.start(53, "*", WiFi.softAPIP());  
 
     IPAddress IP = WiFi.softAPIP();
     Serial.print("AP IP address: ");
     Serial.println(IP); 
 
+    
     // Web Server Root URL
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
-      request->send(LittleFS, "/wifimanager.html", "text/html");
+      request->send(LittleFS, "/wifimanager.html", "text/html", false, processor);
     });
     
     server.serveStatic("/", LittleFS, "/");
@@ -307,7 +295,7 @@ void setup() {
           //Serial.printf("POST[%s]: %s\n", p->name().c_str(), p->value().c_str());
         }
       }
-      restart = true;
+//      restart = true;
       request->send(200, "text/plain", "Done. ESP will restart, connect to your router and go to IP address: ");
     });
     server.begin();
